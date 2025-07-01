@@ -1,6 +1,6 @@
 # Gemini CLI: Quota and Pricing
 
-The quotas and pricing that apply to your usage of Gemini CLI depend on the type of account you use to authenticate with Google. Additionally both pricing and quota may may be calculated differently based on model version, requests, and tokens used.  A summary of model usage is available through the /stats command, and presented on exit at the end of a session. See [privacy and terms](./tos-privacy.md) for details on Privacy policy and Terms of Service.
+The quotas and pricing that apply to your usage of Gemini CLI depend on the type of account you use to authenticate with Google. Additionally both pricing and quota may may be calculated differently based on model version, requests, and tokens used.  A summary of model usage is available through the /stats command, and presented on exit at the end of a session. See [privacy and terms](./tos-privacy.md) for details on Privacy policy and Terms of Service. Published prices are list price, additional negotiated commercial discounting my apply.
 
 This article outlines the specific quotas and pricing applicable for Gemini when using different authentication methods.
 
