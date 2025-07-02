@@ -74,6 +74,7 @@ The Gemini CLI requires you to authenticate with Google's AI services. On initia
           echo 'export GOOGLE_GENAI_USE_VERTEXAI=true' >> ~/.bashrc
           source ~/.bashrc
           ```
+How you authenticate to the CLI determines your [quotas and costs](../quota-and-pricing.md) in using the CLI and which [Terms of Service and Privacy Policies](../tos-privacy.md) apply
 
 ### Persisting Environment Variables with `.env` Files
 
