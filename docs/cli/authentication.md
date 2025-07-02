@@ -39,42 +39,32 @@ The Gemini CLI requires you to authenticate with Google's AI services. On initia
         source ~/.bashrc
         ```
 
-3.  **Vertex AI:**
-    - If not using express mode:
-      - Ensure you have a Google Cloud project and have enabled the Vertex AI API.
-      - Set up Application Default Credentials (ADC), using the following command:
-        ```bash
+3.  **Vertex AI:** - If not using express mode: - Ensure you have a Google Cloud project and have enabled the Vertex AI API. - Set up Application Default Credentials (ADC), using the following command:
+    `bash
         gcloud auth application-default login
-        ```
-        For more information, see [Set up Application Default Credentials for Google Cloud](https://cloud.google.com/docs/authentication/provide-credentials-adc).
-      - Set the `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, and `GOOGLE_GENAI_USE_VERTEXAI` environment variables. In the following methods, replace `YOUR_PROJECT_ID` and `YOUR_PROJECT_LOCATION` with the relevant values for your project:
-        - You can temporarily set these environment variables in your current shell session using the following commands:
-          ```bash
+        `
+    For more information, see [Set up Application Default Credentials for Google Cloud](https://cloud.google.com/docs/authentication/provide-credentials-adc). - Set the `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, and `GOOGLE_GENAI_USE_VERTEXAI` environment variables. In the following methods, replace `YOUR_PROJECT_ID` and `YOUR_PROJECT_LOCATION` with the relevant values for your project: - You can temporarily set these environment variables in your current shell session using the following commands:
+    `bash
           export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
           export GOOGLE_CLOUD_LOCATION="YOUR_PROJECT_LOCATION" # e.g., us-central1
           export GOOGLE_GENAI_USE_VERTEXAI=true
-          ```
-        - For repeated use, you can add the environment variables to your [.env file](#persisting-environment-variables-with-env-files) or your shell's configuration file (like `~/.bashrc`, `~/.zshrc`, or `~/.profile`). For example, the following commands add the environment variables to a `~/.bashrc` file:
-          ```bash
+          ` - For repeated use, you can add the environment variables to your [.env file](#persisting-environment-variables-with-env-files) or your shell's configuration file (like `~/.bashrc`, `~/.zshrc`, or `~/.profile`). For example, the following commands add the environment variables to a `~/.bashrc` file:
+    `bash
           echo 'export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"' >> ~/.bashrc
           echo 'export GOOGLE_CLOUD_LOCATION="YOUR_PROJECT_LOCATION"' >> ~/.bashrc
           echo 'export GOOGLE_GENAI_USE_VERTEXAI=true' >> ~/.bashrc
           source ~/.bashrc
-          ```
-    - If using express mode:
-      - Set the `GOOGLE_API_KEY` environment variable. In the following methods, replace `YOUR_GOOGLE_API_KEY` with your Vertex AI API key provided by express mode:
-        - You can temporarily set these environment variables in your current shell session using the following commands:
-          ```bash
+          ` - If using express mode: - Set the `GOOGLE_API_KEY` environment variable. In the following methods, replace `YOUR_GOOGLE_API_KEY` with your Vertex AI API key provided by express mode: - You can temporarily set these environment variables in your current shell session using the following commands:
+    `bash
           export GOOGLE_API_KEY="YOUR_GOOGLE_API_KEY"
           export GOOGLE_GENAI_USE_VERTEXAI=true
-          ```
-        - For repeated use, you can add the environment variables to your [.env file](#persisting-environment-variables-with-env-files) or your shell's configuration file (like `~/.bashrc`, `~/.zshrc`, or `~/.profile`). For example, the following commands add the environment variables to a `~/.bashrc` file:
-          ```bash
+          ` - For repeated use, you can add the environment variables to your [.env file](#persisting-environment-variables-with-env-files) or your shell's configuration file (like `~/.bashrc`, `~/.zshrc`, or `~/.profile`). For example, the following commands add the environment variables to a `~/.bashrc` file:
+    `bash
           echo 'export GOOGLE_API_KEY="YOUR_GOOGLE_API_KEY"' >> ~/.bashrc
           echo 'export GOOGLE_GENAI_USE_VERTEXAI=true' >> ~/.bashrc
           source ~/.bashrc
-          ```
-How you authenticate to the CLI determines your [quotas and costs](../quota-and-pricing.md) in using the CLI and which [Terms of Service and Privacy Policies](../tos-privacy.md) apply
+          `
+    How you authenticate to the CLI determines your [quotas and costs](../quota-and-pricing.md) in using the CLI and which [Terms of Service and Privacy Policies](../tos-privacy.md) apply
 
 ### Persisting Environment Variables with `.env` Files
 

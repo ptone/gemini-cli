@@ -53,7 +53,6 @@ For users with Google Workspace accounts (using licensed or unlicensed Standard 
   - Members of the Google Developer Program may have Gemini Code Assist licenses through their membership.
   - Daily quota limits reset at midnight Pacific Time (UTC-8).
 
-
 ## 5. Vertex AI (Express Mode)
 
 If you are using Vertex AI in Express Mode:
