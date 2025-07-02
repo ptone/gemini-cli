@@ -1,6 +1,6 @@
 # Gemini CLI: Quotas and Pricing
 
-Your Gemini CLI quotas and pricing depends on the type of account you use to [authenticate](./cli/authentication.md) with Google. Additionally, both quotas and pricing may may be calculated differently based on the model version, requests, and tokens used. A summary of model usage is available through the `/stats` command and presented on exit at the end of a session. See [privacy and terms](./tos-privacy.md) for details on Privacy policy and Terms of Service. Note: published prices are list price; additional negotiated commercial discounting may apply.
+Your Gemini CLI quotas and pricing depends on the type of account you use to [authenticate](./cli/authentication.md) with Google. Additionally, both quotas and pricing may be calculated differently based on the model version, requests, and tokens used. A summary of model usage is available through the `/stats` command and presented on exit at the end of a session. See [privacy and terms](./tos-privacy.md) for details on Privacy policy and Terms of Service. Note: published prices are list price; additional negotiated commercial discounting may apply.
 
 This article outlines the specific quotas and pricing applicable to the Gemini CLI when using different authentication methods.
 
@@ -17,6 +17,7 @@ For users who authenticate by using their personal gmail account to access [Gemi
 - **Notes:**
   - Specific quota for different models is not specified; model fallback may occur to preserve shared experience quality.
   - A gmail account may be qualified as a non-free tier account and require a Google Cloud Project unders several scenarios, see the details in the [authentication documentation](./cli/authentication.md#workspace-gca)
+  - Daily quota limits reset at midnight Pacific Time (UTC-8).
 
 ## 2. Gemini API Key (Unpaid)
 
@@ -50,6 +51,8 @@ For users with Google Workspace accounts (using licensed or unlicensed Standard 
 - **Notes:**
   - Specific quota for different models is not specified; model fallback may occur to preserve shared experience quality.
   - Members of the Google Developer Program may have Gemini Code Assist licenses through their membership.
+  - Daily quota limits reset at midnight Pacific Time (UTC-8).
+
 
 ## 5. Vertex AI (Express Mode)
 
