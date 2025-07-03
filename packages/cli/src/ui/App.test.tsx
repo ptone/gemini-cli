@@ -14,6 +14,7 @@ import {
   ToolRegistry,
   AccessibilitySettings,
   SandboxConfig,
+  FlashFallbackHandler,
 } from '@google/gemini-cli-core';
 import { LoadedSettings, SettingsFile, Settings } from '../config/settings.js';
 import process from 'node:process';
@@ -67,6 +68,7 @@ interface MockServerConfig {
   getAccessibility: Mock<() => AccessibilitySettings>;
   getProjectRoot: Mock<() => string | undefined>;
   getAllGeminiMdFilenames: Mock<() => string[]>;
+  setFlashFallbackHandler: Mock<(handler: FlashFallbackHandler) => void>;
 }
 
 // Mock @google/gemini-cli-core and its Config class
@@ -145,6 +147,8 @@ vi.mock('./hooks/useGeminiStream', () => ({
     submitQuery: vi.fn(),
     initError: null,
     pendingHistoryItems: [],
+    history: [],
+    setHistory: vi.fn(),
   })),
 }));
 

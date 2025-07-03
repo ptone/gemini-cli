@@ -75,7 +75,7 @@ import { PrivacyNotice } from './privacy/PrivacyNotice.js';
 
 const CTRL_EXIT_PROMPT_DURATION_MS = 1000;
 
-interface AppProps {
+export interface AppProps {
   config: Config;
   settings: LoadedSettings;
   startupWarnings?: string[];
@@ -243,14 +243,24 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
     const flashFallbackHandler = async (
       currentModel: string,
       fallbackModel: string,
+      error?: Error,
     ): Promise<boolean> => {
+      let message: string;
+
+      if (error?.message?.includes('quota')) {
+        message = `⚡ You've reached your daily quota for ${currentModel}. Automatically switching to ${fallbackModel} for the remainder of this session. 
+        ⚡ ${currentModel} is currently limited during preview. Daily quotas reset at midnight Pacific time (UTC-8)`;
+      } else {
+        message = `⚡ Slow response times detected due to rate limiting.
+        ⚡ Automatically switching from ${currentModel} to ${fallbackModel} for faster responses for the remainder of this session.`;
+      }
+
       // Add message to UI history
       addItem(
         {
           type: MessageType.INFO,
-          text: `⚡ Slow response times detected. Automatically switching from ${currentModel} to ${fallbackModel} for faster responses for the remainder of this session.
-⚡ To avoid this you can either upgrade to Standard tier. See: https://goo.gle/set-up-gemini-code-assist
-⚡ Or you can utilize a Gemini API Key. See: https://goo.gle/gemini-cli-docs-auth#gemini-api-key
+          text: `${message}
+⚡ For additional quota you can utilize a Gemini or Vertex API Key. See: https://goo.gle/gemini-cli-docs-auth
 ⚡ You can switch authentication methods by typing /auth`,
         },
         Date.now(),

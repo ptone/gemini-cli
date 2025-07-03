@@ -4,28 +4,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { retryWithBackoff } from './retry.js';
-import { setSimulate429 } from './testUtils.js';
-
-// Define an interface for the error with a status property
-interface HttpError extends Error {
-  status?: number;
-}
 
 // Helper to create a mock function that fails a certain number of times
 const createFailingFunction = (
   failures: number,
   successValue: string = 'success',
+  status = 500,
 ) => {
   let attempts = 0;
   return vi.fn(async () => {
     attempts++;
     if (attempts <= failures) {
       // Simulate a retryable error
-      const error: HttpError = new Error(`Simulated error attempt ${attempts}`);
-      error.status = 500; // Simulate a server error
+      const error = new Error(
+        `Simulated error attempt ${attempts}`,
+      ) as Error & { status: number };
+      error.status = status;
       throw error;
     }
     return successValue;
@@ -43,10 +39,9 @@ class NonRetryableError extends Error {
 describe('retryWithBackoff', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    // Disable 429 simulation for tests
-    setSimulate429(false);
     // Suppress unhandled promise rejection warnings for tests that expect errors
     console.warn = vi.fn();
+    console.error = vi.fn();
   });
 
   afterEach(() => {
@@ -78,27 +73,22 @@ describe('retryWithBackoff', () => {
   it('should throw an error if all attempts fail', async () => {
     const mockFn = createFailingFunction(3);
 
-    // 1. Start the retryable operation, which returns a promise.
     const promise = retryWithBackoff(mockFn, {
       maxAttempts: 3,
       initialDelayMs: 10,
     });
 
-    // 2. IMPORTANT: Attach the rejection expectation to the promise *immediately*.
-    //    This ensures a 'catch' handler is present before the promise can reject.
-    //    The result is a new promise that resolves when the assertion is met.
+    // Attach the rejection expectation to the promise *before* it can reject.
     const assertionPromise = expect(promise).rejects.toThrow(
       'Simulated error attempt 3',
     );
 
-    // 3. Now, advance the timers. This will trigger the retries and the
-    //    eventual rejection. The handler attached in step 2 will catch it.
+    // Advance timers to trigger retries and the eventual rejection.
     await vi.runAllTimersAsync();
 
-    // 4. Await the assertion promise itself to ensure the test was successful.
+    // Await the assertion to confirm the test was successful.
     await assertionPromise;
 
-    // 5. Finally, assert the number of calls.
     expect(mockFn).toHaveBeenCalledTimes(3);
   });
 
@@ -118,42 +108,32 @@ describe('retryWithBackoff', () => {
   });
 
   it('should use default shouldRetry if not provided, retrying on 429', async () => {
-    const mockFn = vi.fn(async () => {
-      const error = new Error('Too Many Requests') as any;
-      error.status = 429;
-      throw error;
-    });
+    const mockFn = createFailingFunction(2, 'success', 429);
 
     const promise = retryWithBackoff(mockFn, {
       maxAttempts: 2,
       initialDelayMs: 10,
     });
 
-    // Attach the rejection expectation *before* running timers
-    const assertionPromise =
-      expect(promise).rejects.toThrow('Too Many Requests');
+    const assertionPromise = expect(promise).rejects.toThrow(
+      'Simulated error attempt 2',
+    );
 
-    // Run timers to trigger retries and eventual rejection
     await vi.runAllTimersAsync();
 
-    // Await the assertion
     await assertionPromise;
 
     expect(mockFn).toHaveBeenCalledTimes(2);
   });
 
   it('should use default shouldRetry if not provided, not retrying on 400', async () => {
-    const mockFn = vi.fn(async () => {
-      const error = new Error('Bad Request') as any;
-      error.status = 400;
-      throw error;
-    });
+    const mockFn = createFailingFunction(1, 'success', 400);
 
     const promise = retryWithBackoff(mockFn, {
       maxAttempts: 2,
       initialDelayMs: 10,
     });
-    await expect(promise).rejects.toThrow('Bad Request');
+    await expect(promise).rejects.toThrow('Simulated error attempt 1');
     expect(mockFn).toHaveBeenCalledTimes(1);
   });
 
@@ -198,23 +178,20 @@ describe('retryWithBackoff', () => {
 
     // We expect rejections as mockFn fails 5 times
     const promise1 = runRetry();
-    // Attach the rejection expectation *before* running timers
     const assertionPromise1 = expect(promise1).rejects.toThrow();
-    await vi.runAllTimersAsync(); // Advance for the delay in the first runRetry
+    await vi.runAllTimersAsync();
     await assertionPromise1;
 
     const firstDelaySet = setTimeoutSpy.mock.calls.map(
       (call) => call[1] as number,
     );
-    setTimeoutSpy.mockClear(); // Clear calls for the next run
+    setTimeoutSpy.mockClear();
 
-    // Reset mockFn to reset its internal attempt counter for the next run
-    mockFn = createFailingFunction(5); // Re-initialize with 5 failures
+    mockFn = createFailingFunction(5);
 
     const promise2 = runRetry();
-    // Attach the rejection expectation *before* running timers
     const assertionPromise2 = expect(promise2).rejects.toThrow();
-    await vi.runAllTimersAsync(); // Advance for the delay in the second runRetry
+    await vi.runAllTimersAsync();
     await assertionPromise2;
 
     const secondDelaySet = setTimeoutSpy.mock.calls.map(
@@ -222,12 +199,9 @@ describe('retryWithBackoff', () => {
     );
 
     // Check that the delays are not exactly the same due to jitter
-    // This is a probabilistic test, but with +/-30% jitter, it's highly likely they differ.
     if (firstDelaySet.length > 0 && secondDelaySet.length > 0) {
-      // Check the first delay of each set
       expect(firstDelaySet[0]).not.toBe(secondDelaySet[0]);
     } else {
-      // If somehow no delays were captured (e.g. test setup issue), fail explicitly
       throw new Error('Delays were not captured for jitter test');
     }
 
@@ -241,48 +215,31 @@ describe('retryWithBackoff', () => {
   describe('Flash model fallback for OAuth users', () => {
     it('should trigger fallback for OAuth personal users after persistent 429 errors', async () => {
       const fallbackCallback = vi.fn().mockResolvedValue('gemini-2.5-flash');
-
-      let fallbackOccurred = false;
-      const mockFn = vi.fn().mockImplementation(async () => {
-        if (!fallbackOccurred) {
-          const error: HttpError = new Error('Rate limit exceeded');
-          error.status = 429;
-          throw error;
-        }
-        return 'success';
-      });
+      const mockFn = createFailingFunction(2, 'success', 429);
 
       const promise = retryWithBackoff(mockFn, {
         maxAttempts: 3,
         initialDelayMs: 100,
-        onPersistent429: async (authType?: string) => {
-          fallbackOccurred = true;
-          return await fallbackCallback(authType);
-        },
+        onPersistent429: fallbackCallback,
         authType: 'oauth-personal',
       });
 
-      // Advance all timers to complete retries
       await vi.runAllTimersAsync();
 
-      // Should succeed after fallback
       await expect(promise).resolves.toBe('success');
 
-      // Verify callback was called with correct auth type
-      expect(fallbackCallback).toHaveBeenCalledWith('oauth-personal');
+      expect(fallbackCallback).toHaveBeenCalledWith(
+        'oauth-personal',
+        expect.any(Error),
+      );
 
-      // Should retry again after fallback
-      expect(mockFn).toHaveBeenCalledTimes(3); // 2 initial attempts + 1 after fallback
+      // 2 initial attempts + 1 after fallback
+      expect(mockFn).toHaveBeenCalledTimes(3);
     });
 
     it('should NOT trigger fallback for API key users', async () => {
       const fallbackCallback = vi.fn();
-
-      const mockFn = vi.fn(async () => {
-        const error: HttpError = new Error('Rate limit exceeded');
-        error.status = 429;
-        throw error;
-      });
+      const mockFn = createFailingFunction(3, 'success', 429);
 
       const promise = retryWithBackoff(mockFn, {
         maxAttempts: 3,
@@ -291,16 +248,14 @@ describe('retryWithBackoff', () => {
         authType: 'gemini-api-key',
       });
 
-      // Handle the promise properly to avoid unhandled rejections
-      const resultPromise = promise.catch((error) => error);
+      const assertionPromise = expect(promise).rejects.toThrow(
+        'Simulated error attempt 3',
+      );
+
       await vi.runAllTimersAsync();
-      const result = await resultPromise;
 
-      // Should fail after all retries without fallback
-      expect(result).toBeInstanceOf(Error);
-      expect(result.message).toBe('Rate limit exceeded');
+      await assertionPromise;
 
-      // Callback should not be called for API key users
       expect(fallbackCallback).not.toHaveBeenCalled();
     });
 
@@ -313,7 +268,9 @@ describe('retryWithBackoff', () => {
 
       const mockFn = vi.fn().mockImplementation(async () => {
         if (!fallbackCalled) {
-          const error: HttpError = new Error('Rate limit exceeded');
+          const error = new Error('Rate limit exceeded') as Error & {
+            status: number;
+          };
           error.status = 429;
           throw error;
         }
@@ -335,12 +292,7 @@ describe('retryWithBackoff', () => {
 
     it('should continue with original error if fallback is rejected', async () => {
       const fallbackCallback = vi.fn().mockResolvedValue(null); // User rejected fallback
-
-      const mockFn = vi.fn(async () => {
-        const error: HttpError = new Error('Rate limit exceeded');
-        error.status = 429;
-        throw error;
-      });
+      const mockFn = createFailingFunction(3, 'success', 429);
 
       const promise = retryWithBackoff(mockFn, {
         maxAttempts: 3,
@@ -349,15 +301,18 @@ describe('retryWithBackoff', () => {
         authType: 'oauth-personal',
       });
 
-      // Handle the promise properly to avoid unhandled rejections
-      const resultPromise = promise.catch((error) => error);
-      await vi.runAllTimersAsync();
-      const result = await resultPromise;
+      const assertionPromise = expect(promise).rejects.toThrow(
+        'Simulated error attempt 3',
+      );
 
-      // Should fail with original error when fallback is rejected
-      expect(result).toBeInstanceOf(Error);
-      expect(result.message).toBe('Rate limit exceeded');
-      expect(fallbackCallback).toHaveBeenCalledWith('oauth-personal');
+      await vi.runAllTimersAsync();
+
+      await assertionPromise;
+
+      expect(fallbackCallback).toHaveBeenCalledWith(
+        'oauth-personal',
+        expect.any(Error),
+      );
     });
 
     it('should handle mixed error types (only count consecutive 429s)', async () => {
@@ -372,12 +327,14 @@ describe('retryWithBackoff', () => {
         }
         if (attempts === 1) {
           // First attempt: 500 error (resets consecutive count)
-          const error: HttpError = new Error('Server error');
+          const error = new Error('Server error') as Error & { status: number };
           error.status = 500;
           throw error;
         } else {
           // Remaining attempts: 429 errors
-          const error: HttpError = new Error('Rate limit exceeded');
+          const error = new Error('Rate limit exceeded') as Error & {
+            status: number;
+          };
           error.status = 429;
           throw error;
         }
@@ -386,9 +343,9 @@ describe('retryWithBackoff', () => {
       const promise = retryWithBackoff(mockFn, {
         maxAttempts: 5,
         initialDelayMs: 100,
-        onPersistent429: async (authType?: string) => {
+        onPersistent429: async (authType?: string, error?: Error) => {
           fallbackOccurred = true;
-          return await fallbackCallback(authType);
+          return await fallbackCallback(authType, error);
         },
         authType: 'oauth-personal',
       });
@@ -398,7 +355,10 @@ describe('retryWithBackoff', () => {
       await expect(promise).resolves.toBe('success');
 
       // Should trigger fallback after 2 consecutive 429s (attempts 2-3)
-      expect(fallbackCallback).toHaveBeenCalledWith('oauth-personal');
+      expect(fallbackCallback).toHaveBeenCalledWith(
+        'oauth-personal',
+        expect.any(Error),
+      );
     });
   });
 });

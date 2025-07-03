@@ -95,6 +95,7 @@ export interface SandboxConfig {
 export type FlashFallbackHandler = (
   currentModel: string,
   fallbackModel: string,
+  error?: Error,
 ) => Promise<boolean>;
 
 export interface ConfigParameters {

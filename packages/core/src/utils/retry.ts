@@ -11,7 +11,10 @@ export interface RetryOptions {
   initialDelayMs: number;
   maxDelayMs: number;
   shouldRetry: (error: Error) => boolean;
-  onPersistent429?: (authType?: string) => Promise<string | null>;
+  onPersistent429?: (
+    authType?: string,
+    error?: Error,
+  ) => Promise<string | null>;
   authType?: string;
 }
 
@@ -93,14 +96,17 @@ export async function retryWithBackoff<T>(
         consecutive429Count = 0;
       }
 
-      // If we have persistent 429s and a fallback callback for OAuth
+      const isQuotaError =
+        error instanceof Error && (error as Error).message.includes('quota');
+
+      // If we have persistent 429s, a quota error, and a fallback callback for OAuth
       if (
-        consecutive429Count >= 2 &&
+        (consecutive429Count >= 2 || (errorStatus === 429 && isQuotaError)) &&
         onPersistent429 &&
         authType === AuthType.LOGIN_WITH_GOOGLE
       ) {
         try {
-          const fallbackModel = await onPersistent429(authType);
+          const fallbackModel = await onPersistent429(authType, error as Error);
           if (fallbackModel) {
             // Reset attempt counter and try with new model
             attempt = 0;
