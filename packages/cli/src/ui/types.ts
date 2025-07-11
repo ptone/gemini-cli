@@ -60,6 +60,7 @@ export interface CompressionProps {
 
 export interface HistoryItemBase {
   text?: string; // Text content for user/gemini/info/error messages
+  fromHistory?: boolean;
 }
 
 export type HistoryItemUser = HistoryItemBase & {

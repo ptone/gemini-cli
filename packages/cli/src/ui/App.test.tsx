@@ -130,6 +130,7 @@ vi.mock('@google/gemini-cli-core', async (importOriginal) => {
         getAllGeminiMdFilenames: vi.fn(() => ['GEMINI.md']),
         setFlashFallbackHandler: vi.fn(),
         getSessionId: vi.fn(() => 'test-session-id'),
+        getRestoreChat: vi.fn(() => opts.restoreChat),
         getUserTier: vi.fn().mockResolvedValue(undefined),
       };
     });

@@ -54,6 +54,9 @@ import {
   ApprovalMode,
   isEditorAvailable,
   EditorType,
+  isProQuotaExceededError,
+  isGenericQuotaExceededError,
+  UserTierId,
 } from '@google/gemini-cli-core';
 import { validateAuthMethod } from '../config/auth.js';
 import { useLogger } from './hooks/useLogger.js';
@@ -67,11 +70,6 @@ import { useBracketedPaste } from './hooks/useBracketedPaste.js';
 import { useTextBuffer } from './components/shared/text-buffer.js';
 import * as fs from 'fs';
 import { UpdateNotification } from './components/UpdateNotification.js';
-import {
-  isProQuotaExceededError,
-  isGenericQuotaExceededError,
-  UserTierId,
-} from '@google/gemini-cli-core';
 import { checkForUpdates } from './utils/updateCheck.js';
 import ansiEscapes from 'ansi-escapes';
 import { OverflowProvider } from './contexts/OverflowContext.js';
@@ -84,6 +82,7 @@ interface AppProps {
   config: Config;
   settings: LoadedSettings;
   startupWarnings?: string[];
+  initialHistory?: HistoryItem[];
 }
 
 export const AppWrapper = (props: AppProps) => (
@@ -92,7 +91,12 @@ export const AppWrapper = (props: AppProps) => (
   </SessionStatsProvider>
 );
 
-const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
+const App = ({
+  config,
+  settings,
+  startupWarnings = [],
+  initialHistory,
+}: AppProps) => {
   useBracketedPaste();
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const { stdout } = useStdout();
@@ -140,6 +144,12 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
   const [modelSwitchedFromQuotaError, setModelSwitchedFromQuotaError] =
     useState<boolean>(false);
   const [userTier, setUserTier] = useState<UserTierId | undefined>(undefined);
+
+  useEffect(() => {
+    if (initialHistory && initialHistory.length > 0) {
+      loadHistory(initialHistory);
+    }
+  }, [initialHistory, loadHistory]);
 
   const openPrivacyNotice = useCallback(() => {
     setShowPrivacyNotice(true);

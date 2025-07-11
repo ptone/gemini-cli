@@ -143,6 +143,7 @@ export interface ConfigParameters {
   maxSessionTurns?: number;
   listExtensions?: boolean;
   activeExtensions?: ActiveExtension[];
+  restoreChat?: string;
   noBrowser?: boolean;
 }
 
@@ -187,6 +188,7 @@ export class Config {
   private readonly maxSessionTurns: number;
   private readonly listExtensions: boolean;
   private readonly _activeExtensions: ActiveExtension[];
+  private readonly restoreChat: string | undefined;
   flashFallbackHandler?: FlashFallbackHandler;
   private quotaErrorOccurred: boolean = false;
 
@@ -233,6 +235,7 @@ export class Config {
     this.maxSessionTurns = params.maxSessionTurns ?? -1;
     this.listExtensions = params.listExtensions ?? false;
     this._activeExtensions = params.activeExtensions ?? [];
+    this.restoreChat = params.restoreChat;
     this.noBrowser = params.noBrowser ?? false;
 
     if (params.contextFileName) {
@@ -492,6 +495,10 @@ export class Config {
 
   getActiveExtensions(): ActiveExtension[] {
     return this._activeExtensions;
+  }
+
+  getRestoreChat(): string | undefined {
+    return this.restoreChat;
   }
 
   getNoBrowser(): boolean {

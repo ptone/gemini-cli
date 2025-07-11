@@ -11,6 +11,7 @@ import process from 'node:process';
 import { UseHistoryManagerReturn } from './useHistoryManager.js';
 import { useStateAndRef } from './useStateAndRef.js';
 import {
+  ChatHistoryService,
   Config,
   GitService,
   Logger,
@@ -94,6 +95,8 @@ export const useSlashCommandProcessor = (
     return l;
   }, [config]);
 
+  const chatHistoryService = useMemo(() => new ChatHistoryService(), []);
+
   const [pendingCompressionItemRef, setPendingCompressionItem] =
     useStateAndRef<HistoryItemWithoutId | null>(null);
 
@@ -160,6 +163,7 @@ export const useSlashCommandProcessor = (
         settings,
         git: gitService,
         logger,
+        chatHistory: chatHistoryService,
       },
       ui: {
         addItem,
@@ -179,6 +183,7 @@ export const useSlashCommandProcessor = (
       settings,
       gitService,
       logger,
+      chatHistoryService,
       addItem,
       clearItems,
       refreshStatic,
@@ -197,23 +202,6 @@ export const useSlashCommandProcessor = (
 
     load();
   }, [commandService]);
-
-  const savedChatTags = useCallback(async () => {
-    const geminiDir = config?.getProjectTempDir();
-    if (!geminiDir) {
-      return [];
-    }
-    try {
-      const files = await fs.readdir(geminiDir);
-      return files
-        .filter(
-          (file) => file.startsWith('checkpoint-') && file.endsWith('.json'),
-        )
-        .map((file) => file.replace('checkpoint-', '').replace('.json', ''));
-    } catch (_err) {
-      return [];
-    }
-  }, [config]);
 
   // Define legacy commands
   // This list contains all commands that have NOT YET been migrated to the
@@ -698,8 +686,6 @@ export const useSlashCommandProcessor = (
           'Manage conversation history. Usage: /chat <list|save|resume> <tag>',
         action: async (_mainCommand, subCommand, args) => {
           const tag = (args || '').trim();
-          const logger = new Logger(config?.getSessionId() || '');
-          await logger.initialize();
           const chat = await config?.getGeminiClient()?.getChat();
           if (!chat) {
             addMessage({
@@ -729,7 +715,7 @@ export const useSlashCommandProcessor = (
               }
               const history = chat.getHistory();
               if (history.length > 0) {
-                await logger.saveCheckpoint(chat?.getHistory() || [], tag);
+                await chatHistoryService.save(chat?.getHistory() || [], tag);
                 addMessage({
                   type: MessageType.INFO,
                   content: `Conversation checkpoint saved with tag: ${tag}.`,
@@ -750,16 +736,28 @@ export const useSlashCommandProcessor = (
               if (!tag) {
                 addMessage({
                   type: MessageType.ERROR,
-                  content: 'Missing tag. Usage: /chat resume <tag>',
+                  content:
+                    'Missing tag or file path. Usage: /chat resume <tag|filePath>',
                   timestamp: new Date(),
                 });
                 return;
               }
-              const conversation = await logger.loadCheckpoint(tag);
+              let conversation;
+              if (
+                tag.startsWith('/') ||
+                tag.startsWith('./') ||
+                tag.startsWith('../')
+              ) {
+                // Assume it's a file path if it starts with /, ./, or ../
+                conversation = await chatHistoryService.load(tag); // Pass empty tag, and the file path
+              } else {
+                conversation = await chatHistoryService.load(tag);
+              }
+
               if (conversation.length === 0) {
                 addMessage({
                   type: MessageType.INFO,
-                  content: `No saved checkpoint found with tag: ${tag}.`,
+                  content: `No saved checkpoint found with tag or file path: ${tag}.`,
                   timestamp: new Date(),
                 });
                 return;
@@ -812,7 +810,7 @@ export const useSlashCommandProcessor = (
                 type: MessageType.INFO,
                 content:
                   'list of saved conversations: ' +
-                  (await savedChatTags()).join(', '),
+                  (await chatHistoryService.list()).join(', '),
                 timestamp: new Date(),
               });
               return;
@@ -826,7 +824,7 @@ export const useSlashCommandProcessor = (
           }
         },
         completion: async () =>
-          (await savedChatTags()).map((tag) => 'resume ' + tag),
+          (await chatHistoryService.list()).map((tag) => 'resume ' + tag),
       },
       {
         name: 'quit',
@@ -1039,7 +1037,7 @@ export const useSlashCommandProcessor = (
     openEditorDialog,
     openPrivacyNotice,
     toggleCorgiMode,
-    savedChatTags,
+    chatHistoryService,
     config,
     settings,
     showToolDescriptions,

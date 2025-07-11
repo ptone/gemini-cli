@@ -5,6 +5,7 @@
  */
 
 export * from './src/index.js';
+export * from './src/services/ChatHistoryService.js';
 export {
   DEFAULT_GEMINI_MODEL,
   DEFAULT_GEMINI_FLASH_MODEL,

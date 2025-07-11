@@ -4,7 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Config, GitService, Logger } from '@google/gemini-cli-core';
+import {
+  ChatHistoryService,
+  Config,
+  GitService,
+  Logger,
+} from '@google/gemini-cli-core';
 import { LoadedSettings } from '../../config/settings.js';
 import { UseHistoryManagerReturn } from '../hooks/useHistoryManager.js';
 import { SessionStatsState } from '../contexts/SessionContext.js';
@@ -18,6 +23,7 @@ export interface CommandContext {
     settings: LoadedSettings;
     git: GitService | undefined;
     logger: Logger;
+    chatHistory: ChatHistoryService;
   };
   // UI state and history management
   ui: {

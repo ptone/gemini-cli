@@ -43,10 +43,13 @@ function getResponseText(response: GenerateContentResponse): string | null {
   return null;
 }
 
+import { HistoryItem, MessageType } from './ui/types.js';
+
 export async function runNonInteractive(
   config: Config,
   input: string,
   prompt_id: string,
+  initialHistory?: HistoryItem[],
 ): Promise<void> {
   await config.initialize();
   // Handle EPIPE errors when the output is piped to a command that closes early.
@@ -62,7 +65,16 @@ export async function runNonInteractive(
 
   const chat = await geminiClient.getChat();
   const abortController = new AbortController();
-  let currentMessages: Content[] = [{ role: 'user', parts: [{ text: input }] }];
+  if (initialHistory) {
+    chat.setHistory(
+      initialHistory.map((item) => ({
+        role: item.type === MessageType.USER ? 'user' : 'model',
+        parts: [{ text: item.text || '' }],
+      })),
+    );
+  }
+  let currentMessages: Content[] = [];
+  currentMessages.push({ role: 'user', parts: [{ text: input }] });
   let turnCount = 0;
   try {
     while (true) {

@@ -53,6 +53,7 @@ interface CliArgs {
   allowedMcpServerNames: string[] | undefined;
   extensions: string[] | undefined;
   listExtensions: boolean | undefined;
+  restoreChat: string | undefined;
 }
 
 async function parseArguments(): Promise<CliArgs> {
@@ -167,6 +168,10 @@ async function parseArguments(): Promise<CliArgs> {
       alias: 'l',
       type: 'boolean',
       description: 'List all available extensions and exit.',
+    })
+    .option('restore-chat', {
+      type: 'string',
+      description: 'Restore a chat from a given tag or file path.',
     })
 
     .version(await getCliVersion()) // This will enable the --version flag based on package.json
@@ -318,6 +323,7 @@ export async function loadCliConfig(
       name: e.config.name,
       version: e.config.version,
     })),
+    restoreChat: argv.restoreChat,
     noBrowser: !!process.env.NO_BROWSER,
   });
 }

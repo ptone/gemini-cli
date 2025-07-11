@@ -36,7 +36,9 @@ import {
   logUserPrompt,
   AuthType,
   getOauthClient,
+  ChatHistoryService,
 } from '@google/gemini-cli-core';
+import { HistoryItem, MessageType, StreamingState } from './ui/types.js';
 import { validateAuthMethod } from './config/auth.js';
 import { setMaxSizedBoxDebugging } from './ui/components/shared/MaxSizedBox.js';
 
@@ -181,6 +183,22 @@ export async function main() {
     ...(await getUserStartupWarnings(workspaceRoot)),
   ];
 
+  const chatHistoryService = new ChatHistoryService();
+  let initialHistory: HistoryItem[] | undefined;
+  const restoreChatValue = config.getRestoreChat();
+  if (restoreChatValue) {
+    const historyToRestore = await chatHistoryService.load(restoreChatValue);
+    if (historyToRestore.length > 0) {
+      initialHistory = historyToRestore.map((item, index) => ({
+        id: Date.now() + index,
+        type: item.role === 'user' ? MessageType.USER : MessageType.GEMINI,
+        text: (item.parts || []).map((part) => part.text).join(''),
+        streamingState: StreamingState.Idle,
+        fromHistory: true,
+      }));
+    }
+  }
+
   // Render UI, passing necessary config values. Check that there is no command line question.
   if (process.stdin.isTTY && input?.length === 0) {
     setWindowTitle(basename(workspaceRoot), settings);
@@ -190,6 +208,7 @@ export async function main() {
           config={config}
           settings={settings}
           startupWarnings={startupWarnings}
+          initialHistory={initialHistory}
         />
       </React.StrictMode>,
       { exitOnCtrlC: false },
@@ -223,7 +242,12 @@ export async function main() {
     settings,
   );
 
-  await runNonInteractive(nonInteractiveConfig, input, prompt_id);
+  await runNonInteractive(
+    nonInteractiveConfig,
+    input,
+    prompt_id,
+    initialHistory,
+  );
   process.exit(0);
 }
 
