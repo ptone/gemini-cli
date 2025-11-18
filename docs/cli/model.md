@@ -5,7 +5,7 @@ configure the model used by Gemini CLI, giving you more control over your
 results.
 
 **Note:** The `/model` command is only available when you have
-[model routing](../model-routing) enabled.
+[model routing](./model-routing) enabled.
 
 ## How to use the `/model` command
 
