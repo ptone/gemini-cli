@@ -9,7 +9,7 @@ import type { CommandContext, SlashCommand } from './types.js';
 import { CommandKind } from './types.js';
 import process from 'node:process';
 import { MessageType, type HistoryItemAbout } from '../types.js';
-import { IdeClient } from '@google/gemini-cli-core';
+import { IdeClient, UserAccountManager } from '@google/gemini-cli-core';
 
 export const aboutCommand: SlashCommand = {
   name: 'about',
@@ -32,6 +32,9 @@ export const aboutCommand: SlashCommand = {
     const gcpProject = process.env['GOOGLE_CLOUD_PROJECT'] || '';
     const ideClient = await getIdeClientName(context);
 
+    const userAccountManager = new UserAccountManager();
+    const userEmail = userAccountManager.getCachedGoogleAccount() ?? undefined;
+
     const aboutItem: Omit<HistoryItemAbout, 'id'> = {
       type: MessageType.ABOUT,
       cliVersion,
@@ -41,6 +44,7 @@ export const aboutCommand: SlashCommand = {
       selectedAuthType,
       gcpProject,
       ideClient,
+      userEmail,
     };
 
     context.ui.addItem(aboutItem, Date.now());
