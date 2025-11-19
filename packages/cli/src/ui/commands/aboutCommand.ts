@@ -9,7 +9,11 @@ import type { CommandContext, SlashCommand } from './types.js';
 import { CommandKind } from './types.js';
 import process from 'node:process';
 import { MessageType, type HistoryItemAbout } from '../types.js';
-import { IdeClient, UserAccountManager } from '@google/gemini-cli-core';
+import {
+  IdeClient,
+  UserAccountManager,
+  debugLogger,
+} from '@google/gemini-cli-core';
 
 export const aboutCommand: SlashCommand = {
   name: 'about',
@@ -33,7 +37,11 @@ export const aboutCommand: SlashCommand = {
     const ideClient = await getIdeClientName(context);
 
     const userAccountManager = new UserAccountManager();
-    const userEmail = userAccountManager.getCachedGoogleAccount() ?? undefined;
+    const cachedAccount = userAccountManager.getCachedGoogleAccount();
+    debugLogger.log('AboutCommand: Retrieved cached Google account', {
+      cachedAccount,
+    });
+    const userEmail = cachedAccount ?? undefined;
 
     const aboutItem: Omit<HistoryItemAbout, 'id'> = {
       type: MessageType.ABOUT,
