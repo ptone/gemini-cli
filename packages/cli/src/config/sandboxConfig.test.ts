@@ -91,7 +91,7 @@ describe('loadSandboxConfig', () => {
     it('should throw if GEMINI_SANDBOX is an invalid command', async () => {
       process.env['GEMINI_SANDBOX'] = 'invalid-command';
       await expect(loadSandboxConfig({}, {})).rejects.toThrow(
-        "Invalid sandbox command 'invalid-command'. Must be one of docker, podman, sandbox-exec",
+        "Invalid sandbox command 'invalid-command'. Must be one of docker, podman, sandbox-exec, container",
       );
     });
 
@@ -172,7 +172,7 @@ describe('loadSandboxConfig', () => {
       await expect(
         loadSandboxConfig({}, { sandbox: 'invalid-command' }),
       ).rejects.toThrow(
-        "Invalid sandbox command 'invalid-command'. Must be one of docker, podman, sandbox-exec",
+        "Invalid sandbox command 'invalid-command'. Must be one of docker, podman, sandbox-exec, container",
       );
     });
   });

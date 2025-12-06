@@ -101,7 +101,16 @@ if (['1', 'true'].includes(geminiSandbox)) {
     process.exit(1);
   }
 } else if (geminiSandbox && !['0', 'false'].includes(geminiSandbox)) {
-  if (commandExists(geminiSandbox)) {
+  if (geminiSandbox === 'container') {
+    if (commandExists('container')) {
+      command = 'container --debug';
+    } else {
+      console.error(
+        "ERROR: missing sandbox command 'container' (required for GEMINI_SANDBOX=container)",
+      );
+      process.exit(1);
+    }
+  } else if (commandExists(geminiSandbox)) {
     command = geminiSandbox;
   } else {
     console.error(

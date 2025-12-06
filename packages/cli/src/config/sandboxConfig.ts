@@ -27,6 +27,7 @@ const VALID_SANDBOX_COMMANDS: ReadonlyArray<SandboxConfig['command']> = [
   'docker',
   'podman',
   'sandbox-exec',
+  'container',
 ];
 
 function isSandboxCommand(value: string): value is SandboxConfig['command'] {
@@ -64,6 +65,14 @@ function getSandboxCommand(
       );
     }
     // confirm that specified command exists
+    if (sandbox === 'container') {
+      if (commandExists.sync('container')) {
+        return sandbox;
+      }
+      throw new FatalSandboxError(
+        "Missing sandbox command 'container' (required for GEMINI_SANDBOX=container)",
+      );
+    }
     if (commandExists.sync(sandbox)) {
       return sandbox;
     }
