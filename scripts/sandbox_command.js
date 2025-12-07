@@ -90,7 +90,15 @@ const commandExists = (cmd) => {
 
 let command = '';
 if (['1', 'true'].includes(geminiSandbox)) {
-  if (commandExists('docker')) {
+  if (os.platform() === 'darwin' && commandExists('container')) {
+    command = 'container';
+  } else if (
+    os.platform() === 'darwin' &&
+    process.env.SEATBELT_PROFILE !== 'none' &&
+    commandExists('sandbox-exec')
+  ) {
+    command = 'sandbox-exec';
+  } else if (commandExists('docker')) {
     command = 'docker';
   } else if (commandExists('podman')) {
     command = 'podman';
