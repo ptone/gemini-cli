@@ -189,4 +189,8 @@ function buildImage(imageName, dockerfile) {
 
 buildImage(image, dockerFile);
 
-execSync(`${sandboxCommand} image prune -f`, { stdio: 'ignore' });
+if (sandboxCommand === 'container') {
+  execSync(`${sandboxCommand} image prune`, { stdio: 'ignore' });
+} else {
+  execSync(`${sandboxCommand} image prune -f`, { stdio: 'ignore' });
+}

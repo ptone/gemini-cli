@@ -101,16 +101,7 @@ if (['1', 'true'].includes(geminiSandbox)) {
     process.exit(1);
   }
 } else if (geminiSandbox && !['0', 'false'].includes(geminiSandbox)) {
-  if (geminiSandbox === 'container') {
-    if (commandExists('container')) {
-      command = 'container --debug';
-    } else {
-      console.error(
-        "ERROR: missing sandbox command 'container' (required for GEMINI_SANDBOX=container)",
-      );
-      process.exit(1);
-    }
-  } else if (commandExists(geminiSandbox)) {
+  if (commandExists(geminiSandbox)) {
     command = geminiSandbox;
   } else {
     console.error(
@@ -119,8 +110,13 @@ if (['1', 'true'].includes(geminiSandbox)) {
     process.exit(1);
   }
 } else {
-  if (os.platform() === 'darwin' && process.env.SEATBELT_PROFILE !== 'none') {
-    if (commandExists('sandbox-exec')) {
+  if (os.platform() === 'darwin') {
+    if (commandExists('container')) {
+      command = 'container';
+    } else if (
+      process.env.SEATBELT_PROFILE !== 'none' &&
+      commandExists('sandbox-exec')
+    ) {
       command = 'sandbox-exec';
     } else {
       process.exit(1);

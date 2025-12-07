@@ -254,6 +254,9 @@ export async function start_sandbox(
     }
 
     // stop if image is missing
+    console.error(
+      `DEBUG: Checking for sandbox image ${image} using ${sandboxExecutable}...`,
+    );
     if (!(await ensureSandboxImageIsPresent(sandboxExecutable, image))) {
       const remedy =
         image === LOCAL_DEV_SANDBOX_IMAGE_NAME
@@ -263,6 +266,7 @@ export async function start_sandbox(
         `Sandbox image '${image}' is missing or could not be pulled. ${remedy}`,
       );
     }
+    console.error(`DEBUG: Sandbox image ${image} is present.`);
 
     // use interactive mode and auto-remove container on exit
     // run init binary inside container to forward signals & reap zombies
@@ -287,7 +291,9 @@ export async function start_sandbox(
     }
 
     // allow access to host.docker.internal
-    args.push('--add-host', 'host.docker.internal:host-gateway');
+    if (config.command !== 'container') {
+      args.push('--add-host', 'host.docker.internal:host-gateway');
+    }
 
     // mount current directory as working directory in sandbox (set via --workdir)
     args.push('--volume', `${workdir}:${containerWorkdir}`);
@@ -305,11 +311,17 @@ export async function start_sandbox(
       '--volume',
       `${userSettingsDirOnHost}:${userSettingsDirInSandbox}`,
     );
-    if (userSettingsDirInSandbox !== userSettingsDirOnHost) {
-      args.push(
-        '--volume',
-        `${userSettingsDirOnHost}:${getContainerPath(userSettingsDirOnHost)}`,
-      );
+
+    // The 'container' command (Apple's Virtualization framework) does not support mounting the same source directory
+    // to multiple destinations, which causes "More than one Virtio File System device uses the tag" errors.
+    // We exclude this secondary mount for 'container' on macOS.
+    if (config.command !== 'container' || os.platform() !== 'darwin') {
+      if (userSettingsDirInSandbox !== userSettingsDirOnHost) {
+        args.push(
+          '--volume',
+          `${userSettingsDirOnHost}:${getContainerPath(userSettingsDirOnHost)}`,
+        );
+      }
     }
 
     // mount os.tmpdir() as os.tmpdir() inside container
@@ -399,8 +411,12 @@ export async function start_sandbox(
 
       // if using proxy, switch to internal networking through proxy
       if (proxy) {
+        const createNetworkCmd =
+          config.command === 'container'
+            ? `${sandboxExecutable} network create ${SANDBOX_NETWORK_NAME}`
+            : `${sandboxExecutable} network create --internal ${SANDBOX_NETWORK_NAME}`;
         execSync(
-          `${sandboxExecutable} network inspect ${SANDBOX_NETWORK_NAME} || ${sandboxExecutable} network create --internal ${SANDBOX_NETWORK_NAME}`,
+          `${sandboxExecutable} network inspect ${SANDBOX_NETWORK_NAME} || ${createNetworkCmd}`,
         );
         args.push('--network', SANDBOX_NETWORK_NAME);
         // if proxy command is set, create a separate network w/ host access (i.e. non-internal)
@@ -426,16 +442,26 @@ export async function start_sandbox(
       debugLogger.log(`ContainerName: ${containerName}`);
     } else {
       let index = 0;
-      const containerNameCheck = (
-        await execAsync(`${sandboxExecutable} ps -a --format "{{.Names}}"`)
-      ).stdout.trim();
+      let containerNameCheck = '';
+      if (config.command === 'container') {
+        containerNameCheck = (
+          await execAsync(`${sandboxExecutable} list -a -q`)
+        ).stdout.trim();
+      } else {
+        containerNameCheck = (
+          await execAsync(`${sandboxExecutable} ps -a --format "{{.Names}}"`)
+        ).stdout.trim();
+      }
       while (containerNameCheck.includes(`${imageName}-${index}`)) {
         index++;
       }
       containerName = `${imageName}-${index}`;
       debugLogger.log(`ContainerName (regular): ${containerName}`);
     }
-    args.push('--name', containerName, '--hostname', containerName);
+    args.push('--name', containerName);
+    if (config.command !== 'container') {
+      args.push('--hostname', containerName);
+    }
 
     // copy GEMINI_CLI_TEST_VAR for integration tests
     if (process.env['GEMINI_CLI_TEST_VAR']) {
@@ -664,13 +690,18 @@ export async function start_sandbox(
       );
       // connect proxy container to sandbox network
       // (workaround for older versions of docker that don't support multiple --network args)
-      await execAsync(
-        `${sandboxExecutable} network connect ${SANDBOX_NETWORK_NAME} ${SANDBOX_PROXY_NAME}`,
-      );
+      if (config.command !== 'container') {
+        await execAsync(
+          `${sandboxExecutable} network connect ${SANDBOX_NETWORK_NAME} ${SANDBOX_PROXY_NAME}`,
+        );
+      }
     }
 
     // spawn child and let it inherit stdio
     process.stdin.pause();
+    console.error(
+      `DEBUG: Spawning sandbox process: ${sandboxExecutable} ${args.join(' ')}`,
+    );
     sandboxProcess = spawn(sandboxExecutable, args, {
       stdio: 'inherit',
     });
@@ -699,7 +730,14 @@ export async function start_sandbox(
 // Helper functions to ensure sandbox image is present
 async function imageExists(sandbox: string, image: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const args = ['images', '-q', image];
+    let args: string[];
+    // 'container' CLI uses 'image inspect' which returns 0 if found, 1 if not.
+    // Docker/Podman use 'images -q' which returns 0 and prints ID if found, empty if not.
+    if (sandbox === 'container') {
+      args = ['image', 'inspect', image];
+    } else {
+      args = ['images', '-q', image];
+    }
     const checkProcess = spawn(sandbox, args);
 
     let stdoutData = '';
@@ -719,10 +757,14 @@ async function imageExists(sandbox: string, image: string): Promise<boolean> {
     checkProcess.on('close', (code) => {
       // Non-zero code might indicate docker daemon not running, etc.
       // The primary success indicator is non-empty stdoutData.
-      if (code !== 0) {
-        // console.warn(`'${sandbox} images -q ${image}' exited with code ${code}.`);
+      if (sandbox === 'container') {
+        resolve(code === 0);
+      } else {
+        if (code !== 0) {
+          // console.warn(`'${sandbox} images -q ${image}' exited with code ${code}.`);
+        }
+        resolve(stdoutData.trim() !== '');
       }
-      resolve(stdoutData.trim() !== '');
     });
   });
 }
@@ -730,7 +772,8 @@ async function imageExists(sandbox: string, image: string): Promise<boolean> {
 async function pullImage(sandbox: string, image: string): Promise<boolean> {
   console.info(`Attempting to pull image ${image} using ${sandbox}...`);
   return new Promise((resolve) => {
-    const args = ['pull', image];
+    const args =
+      sandbox === 'container' ? ['image', 'pull', image] : ['pull', image];
     const pullProcess = spawn(sandbox, args, { stdio: 'pipe' });
 
     let stderrData = '';
