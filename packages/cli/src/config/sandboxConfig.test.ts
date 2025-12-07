@@ -105,7 +105,17 @@ describe('loadSandboxConfig', () => {
   });
 
   describe('with sandbox: true', () => {
-    it('should use sandbox-exec on darwin if available', async () => {
+    it('should use container on darwin if available', async () => {
+      mockedOsPlatform.mockReturnValue('darwin');
+      mockedCommandExistsSync.mockImplementation((cmd) => cmd === 'container');
+      const config = await loadSandboxConfig({}, { sandbox: true });
+      expect(config).toEqual({
+        command: 'container',
+        image: 'default/image',
+      });
+    });
+
+    it('should use sandbox-exec on darwin if available and container is not', async () => {
       mockedOsPlatform.mockReturnValue('darwin');
       mockedCommandExistsSync.mockImplementation(
         (cmd) => cmd === 'sandbox-exec',
@@ -117,12 +127,12 @@ describe('loadSandboxConfig', () => {
       });
     });
 
-    it('should prefer sandbox-exec over docker on darwin', async () => {
+    it('should prefer container over sandbox-exec over docker on darwin', async () => {
       mockedOsPlatform.mockReturnValue('darwin');
       mockedCommandExistsSync.mockReturnValue(true); // all commands exist
       const config = await loadSandboxConfig({}, { sandbox: true });
       expect(config).toEqual({
-        command: 'sandbox-exec',
+        command: 'container',
         image: 'default/image',
       });
     });
