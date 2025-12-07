@@ -299,44 +299,53 @@ describe('Telemetry SDK', () => {
   });
 
   it('should initialize with GCP exporters when credentials are provided via post_auth', async () => {
-    vi.spyOn(mockConfig, 'getTelemetryUseCliAuth').mockReturnValue(true);
-    vi.spyOn(mockConfig, 'getTelemetryTarget').mockReturnValue(
-      TelemetryTarget.GCP,
-    );
-    vi.spyOn(mockConfig, 'getTelemetryOtlpEndpoint').mockReturnValue('');
+    const originalOtlpEnv = process.env['OTLP_GOOGLE_CLOUD_PROJECT'];
+    delete process.env['OTLP_GOOGLE_CLOUD_PROJECT'];
 
-    // 1. Initial state: No credentials.
-    await initializeTelemetry(mockConfig);
-
-    // Verify nothing happened yet
-    expect(GcpTraceExporter).not.toHaveBeenCalled();
-
-    // 2. Set project ID and emit post_auth event
-    process.env['GOOGLE_CLOUD_PROJECT'] = 'test-project';
-
-    const mockCredentials = {
-      client_email: 'test@example.com',
-      private_key: '-----BEGIN PRIVATE KEY-----\n...',
-      type: 'authorized_user',
-    };
-
-    // Emit the event directly
-    authEvents.emit('post_auth', mockCredentials);
-
-    // Wait for the event handler to process.
-    await vi.waitFor(() => {
-      // Check if debugLogger was called, which indicates the listener ran
-      expect(debugLogger.log).toHaveBeenCalledWith(
-        'Telemetry reinit with credentials: ',
-        mockCredentials,
+    try {
+      vi.spyOn(mockConfig, 'getTelemetryUseCliAuth').mockReturnValue(true);
+      vi.spyOn(mockConfig, 'getTelemetryTarget').mockReturnValue(
+        TelemetryTarget.GCP,
       );
+      vi.spyOn(mockConfig, 'getTelemetryOtlpEndpoint').mockReturnValue('');
 
-      // Should use GCP exporters now with the project ID
-      expect(GcpTraceExporter).toHaveBeenCalledWith(
-        'test-project',
-        mockCredentials,
-      );
-    });
+      // 1. Initial state: No credentials.
+      await initializeTelemetry(mockConfig);
+
+      // Verify nothing happened yet
+      expect(GcpTraceExporter).not.toHaveBeenCalled();
+
+      // 2. Set project ID and emit post_auth event
+      process.env['GOOGLE_CLOUD_PROJECT'] = 'test-project';
+
+      const mockCredentials = {
+        client_email: 'test@example.com',
+        private_key: '-----BEGIN PRIVATE KEY-----\n...',
+        type: 'authorized_user',
+      };
+
+      // Emit the event directly
+      authEvents.emit('post_auth', mockCredentials);
+
+      // Wait for the event handler to process.
+      await vi.waitFor(() => {
+        // Check if debugLogger was called, which indicates the listener ran
+        expect(debugLogger.log).toHaveBeenCalledWith(
+          'Telemetry reinit with credentials: ',
+          mockCredentials,
+        );
+
+        // Should use GCP exporters now with the project ID
+        expect(GcpTraceExporter).toHaveBeenCalledWith(
+          'test-project',
+          mockCredentials,
+        );
+      });
+    } finally {
+      if (originalOtlpEnv) {
+        process.env['OTLP_GOOGLE_CLOUD_PROJECT'] = originalOtlpEnv;
+      }
+    }
   });
 
   describe('bufferTelemetryEvent', () => {
