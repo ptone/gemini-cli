@@ -254,9 +254,6 @@ export async function start_sandbox(
     }
 
     // stop if image is missing
-    console.error(
-      `DEBUG: Checking for sandbox image ${image} using ${sandboxExecutable}...`,
-    );
     if (!(await ensureSandboxImageIsPresent(sandboxExecutable, image))) {
       const remedy =
         image === LOCAL_DEV_SANDBOX_IMAGE_NAME
@@ -266,7 +263,6 @@ export async function start_sandbox(
         `Sandbox image '${image}' is missing or could not be pulled. ${remedy}`,
       );
     }
-    console.error(`DEBUG: Sandbox image ${image} is present.`);
 
     // use interactive mode and auto-remove container on exit
     // run init binary inside container to forward signals & reap zombies
@@ -699,9 +695,6 @@ export async function start_sandbox(
 
     // spawn child and let it inherit stdio
     process.stdin.pause();
-    console.error(
-      `DEBUG: Spawning sandbox process: ${sandboxExecutable} ${args.join(' ')}`,
-    );
     sandboxProcess = spawn(sandboxExecutable, args, {
       stdio: 'inherit',
     });
