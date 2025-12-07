@@ -88,7 +88,7 @@ function getSandboxCommand(
       return 'container';
     }
     if (
-      process.env.SEATBELT_PROFILE !== 'none' &&
+      process.env['SEATBELT_PROFILE'] !== 'none' &&
       commandExists.sync('sandbox-exec')
     ) {
       return 'sandbox-exec';
